@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picoworker Automation Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .blink-warning {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-indigo-600 text-white p-4 shadow-md">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Picoworker Automation</h1>
+                <div class="flex items-center space-x-4">
+                    <span id="connection-status" class="px-3 py-1 bg-green-500 rounded-full text-sm">Connected</span>
+                    <span class="text-sm">Last updated: <span id="last-updated">Just now</span></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Earnings Card -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Earnings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-gray-500">Current Balance</p>
+                        <p class="text-3xl font-bold" id="current-balance">$0.00</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Last Payment</p>
+                        <p class="text-2xl" id="last-payment">$0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions Card -->
+            <div class="bg-white rounded-lg shadow-md p-6 md:col-span-2">
+                <h2 class="text-xl font-semibold mb-4">Recent Transactions</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-table" class="bg-white divide-y divide-gray-200">
+                            <!-- Transactions will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="bg-white rounded-lg shadow-md p-6 md:col-span-3">
+                <h2 class="text-xl font-semibold mb-4">Earnings History</h2>
+                <canvas id="earnings-chart" height="150"></canvas>
+            </div>
+
+            <!-- AI Monitoring -->
+            <div class="bg-white rounded-lg shadow-md p-6 md:col-span-3">
+                <h2 class="text-xl font-semibold mb-4">AI Monitoring</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="font-medium mb-2">Anomaly Detection</h3>
+                        <div id="anomaly-status" class="p-3 bg-green-100 text-green-800 rounded">
+                            No anomalies detected
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-medium mb-2">System Health</h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span>Payment API</span>
+                                <span class="text-green-600">✔ Operational</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Email Service</span>
+                                <span class="text-green-600">✔ Operational</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>AI Model</span>
+                                <span class="text-green-600">✔ Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Connect to WebSocket for real-time updates
+        const socket = new WebSocket(`ws://${window.location.host}/ws`);
+        
+        // Chart initialization
+        const ctx = document.getElementById('earnings-chart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Earnings ($)',
+                    data: [],
+                    borderColor: 'rgb(79, 70, 229)',
+                    tension: 0.1,
+                    fill: true,
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // WebSocket event handlers
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            // Update dashboard elements
+            document.getElementById('current-balance').textContent = `$${data.current_balance.toFixed(2)}`;
+            document.getElementById('last-payment').textContent = `$${data.last_payment.amount.toFixed(2)}`;
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+            
+            // Update transactions table
+            const tableBody = document.getElementById('transactions-table');
+            tableBody.innerHTML = data.recent_transactions.map(tx => `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">${new Date(tx.timestamp).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">$${tx.amount.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded-full ${tx.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${tx.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // Update chart
+            chart.data.labels = data.history.map(item => new Date(item.date).toLocaleDateString());
+            chart.data.datasets[0].data = data.history.map(item => item.amount);
+            chart.update();
+            
+            // Update anomaly status
+            if (data.anomaly_detected) {
+                const anomalyElement = document.getElementById('anomaly-status');
+                anomalyElement.className = 'p-3 bg-red-100 text-red-800 rounded blink-warning';
+                anomalyElement.textContent = '⚠ Anomaly detected in recent transactions';
+            }
+        };
+
+        socket.onclose = function() {
+            document.getElementById('connection-status').className = 'px-3 py-1 bg-red-500 rounded-full text-sm';
+            document.getElementById('connection-status').textContent = 'Disconnected';
+        };
+    </script>
+</body>
+</html>
