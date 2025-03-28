@@ -1,0 +1,18 @@
+[Unit]
+Description=Picoworker Automation System
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/project/sandbox/user-workspace
+ExecStart=/bin/bash auto-deploy.sh
+Restart=always
+RestartSec=30
+User=root
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=picoworker
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
