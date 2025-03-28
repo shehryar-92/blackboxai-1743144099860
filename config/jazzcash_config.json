@@ -1,0 +1,7 @@
+{
+    "merchant_id": "YOUR_MERCHANT_ID",
+    "password": "YOUR_API_PASSWORD",
+    "salt": "YOUR_SALT_KEY",
+    "environment": "sandbox",
+    "recipient_number": "+923249579762"
+}
