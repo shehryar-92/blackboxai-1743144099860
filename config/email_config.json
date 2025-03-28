@@ -1,0 +1,5 @@
+{
+    "domain": "your-actual-domain.mailgun.org",
+    "api_key": "your-actual-api-key",
+    "from_email": "notifications@yourdomain.com"
+}
